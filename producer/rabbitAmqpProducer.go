@@ -2,6 +2,7 @@ package producer
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 	"github.com/trivago/gollum/core"
 	"github.com/streadway/amqp"
@@ -37,16 +38,19 @@ func (prod *RabbitAmqpProducer) pushMessage(msg *core.Message) {
 		DeliveryMode: amqp.Persistent,
 		Timestamp:    msg.GetCreationTime(),
 		ContentType:  "text/plain",
-		Body:         []byte("Go Go AMQP!"),
+		Body:        	 msg.GetPayload(),
 	}
-
+	if(prod.amqpChannel == nil){
+		prod.debugLog("Channel is Null")
+		return
+	}
 	prod.amqpChannel.Publish(prod.exchangeName,prod.queueName,false,false, amqpMsg)
 }
 
 // Produce writes to stdout or stderr.
 func (prod *RabbitAmqpProducer) Produce(workers *sync.WaitGroup) {
 	defer prod.WorkerDone()
-
+	go prod.startConnection()
 	prod.AddMainWorker(workers)
 	prod.MessageControlLoop(prod.pushMessage)
 }
@@ -73,6 +77,7 @@ func(prod *RabbitAmqpProducer) startConnection() {
 
 	prod.debugLog("opening channel")
 	prod.amqpChannel, err = prod.amqpConnection.Channel()
+	prod.debugLog("channel ="+ reflect.TypeOf(prod.amqpChannel).String() );
 	prod.logErrorAndDie(err, "Failed to open a channel")
 
 }

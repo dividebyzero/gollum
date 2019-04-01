@@ -59,25 +59,25 @@ func(cons *RabbitAmqpConsumer) startConnection() {
 	cons.amqpChannel, err = cons.amqpConnection.Channel()
 	cons.logErrorAndDie(err, "Failed to open a channel")
 
-
-	cons.amqpChannel.Consume(
+	 go cons.handleConsume( cons.amqpChannel.Consume(
 		cons.queueName,
 		cons.ampqConsumerId,
-		true,  //auto-ack
+		false,  //auto-ack
 		false,
 		false,
 		false,
 		nil,
-	)
+	))
+
 }
 
-func(cons *RabbitAmqpConsumer) handleConsume(deliveries <-chan amqp.Delivery, done chan error) {
+func(cons *RabbitAmqpConsumer) handleConsume(deliveries <-chan amqp.Delivery, err error) {
 	fmt.Println("waiting for rabbitmq deliveries...")
 	for d := range deliveries {
-		d.Ack(false)
 		s := string(d.Body)
 		cons.debugLog("messge="+s)
 		cons.Enqueue(d.Body)
+		d.Ack(false)
 	}
 }
 
