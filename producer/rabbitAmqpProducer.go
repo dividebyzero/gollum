@@ -2,6 +2,7 @@ package producer
 
 import (
 	"fmt"
+	"net/url"
 	"reflect"
 	"sync"
 	"github.com/trivago/gollum/core"
@@ -25,11 +26,25 @@ func init() {
 
 func (prod *RabbitAmqpProducer) Configure(conf core.PluginConfigReader) {
 	//get connection string, default to the amqp testing defaults.
-	prod.connectionString = conf.GetString("connectionString", "amqp://guest:guest@localhost:5672/")
+	prod.connectionString = prod.buildConnectionString(
+		conf.GetString("user","guest"),
+		conf.GetString("password","guest"),
+		conf.GetString("host","localhost"),
+		conf.GetString("port","5672"),
+	)
+
 	prod.enableDebugLog = conf.GetBool("debugLog", true)
 	prod.exchangeName = conf.GetString("exchangeName","")
 	prod.queueName = conf.GetString("queueName","")
 	prod.ampqConsumerId = fmt.Sprintf("%s_%s", "gollum_rabbidAmpq_producer", conf.GetID())
+}
+
+func(cons *RabbitAmqpProducer) buildConnectionString(user string, pass string, host string, port string) string {
+	var encodedUsr = url.UserPassword(user, pass).String()
+	conurl, err := url.Parse(fmt.Sprintf(
+		"amqp://%s@%s:%s",encodedUsr,host,port))
+	cons.logErrorAndDie(err,"failed to build connection string")
+	return conurl.String()
 }
 
 func (prod *RabbitAmqpProducer) pushMessage(msg *core.Message) {
